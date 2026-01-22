@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starfield Particle System V2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000000;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #starfield-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #spaceship-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+            pointer-events: none;
+            background: radial-gradient(circle at center, transparent 40%, rgba(20, 20, 30, 0.7) 70%, rgba(10, 10, 20, 0.9) 100%);
+            border: 60px solid rgba(15, 15, 25, 0.95);
+            border-radius: 20px;
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.8);
+        }
+
+        .controls-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(30, 30, 30, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            width: 180px;
+        }
+
+        .controls-panel h2 {
+            margin-bottom: 20px;
+            font-size: 1rem;
+            text-align: center;
+            color: #ffffff;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            font-size: 0.85rem;
+            color: #cccccc;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 120px;
+        }
+
+        input[type="range"].vertical {
+            writing-mode: bt-lr;
+            -webkit-appearance: slider-vertical;
+            width: 8px;
+            height: 100px;
+            padding: 0;
+            margin: 10px 0;
+        }
+
+        input[type="range"].vertical::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        input[type="range"].vertical::-webkit-slider-thumb:hover {
+            background: #66BB6A;
+        }
+
+        input[type="range"].vertical::-webkit-slider-runnable-track {
+            width: 8px;
+            height: 100px;
+            background: #555555;
+            border-radius: 4px;
+        }
+
+        input[type="range"].vertical::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+        }
+
+        input[type="range"].vertical::-moz-range-thumb:hover {
+            background: #66BB6A;
+        }
+
+        input[type="range"].vertical::-moz-range-track {
+            width: 8px;
+            background: #555555;
+            border-radius: 4px;
+        }
+
+        .control-value {
+            color: #4CAF50;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 600px) {
+            .controls-panel {
+                width: 140px;
+                padding: 15px;
+            }
+
+            .controls-panel h2 {
+                font-size: 0.9rem;
+            }
+
+            .control-label {
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="starfield-canvas"></canvas>
+    <div id="spaceship-overlay"></div>
+
+    <div class="controls-panel">
+        <h2>Starfield Controls</h2>
+
+        <div class="control-group">
+            <div class="control-label">Trail Length</div>
+            <div class="slider-container">
+                <input type="range" class="vertical" id="trail-slider" min="0" max="100" value="50" orient="vertical">
+                <div class="control-value" id="trail-value">50</div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">Speed</div>
+            <div class="slider-container">
+                <input type="range" class="vertical" id="speed-slider" min="0" max="50" value="25" orient="vertical">
+                <div class="control-value" id="speed-value">25</div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">Particle Count</div>
+            <div class="slider-container">
+                <input type="range" class="vertical" id="count-slider" min="10" max="1000" value="200" orient="vertical">
+                <div class="control-value" id="count-value">200</div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">Spawn Radius</div>
+            <div class="slider-container">
+                <input type="range" class="vertical" id="radius-slider" min="0" max="100" value="0" orient="vertical">
+                <div class="control-value" id="radius-value">0</div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">Star Color</div>
+            <div class="slider-container">
+                <input type="range" class="vertical" id="color-slider" min="0" max="360" value="0" orient="vertical">
+                <div class="control-value" id="color-value">0</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('starfield-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Particle class
+        class Particle {
+            constructor(centerX, centerY, spawnRadius, speed, hue) {
+                this.reset(centerX, centerY, spawnRadius, speed, hue);
+            }
+
+            reset(centerX, centerY, spawnRadius, speed, hue) {
+                // Random position within spawn radius
+                const spawnAngle = Math.random() * Math.PI * 2;
+                const spawnDistance = Math.random() * spawnRadius;
+
+                this.x = centerX + Math.cos(spawnAngle) * spawnDistance;
+                this.y = centerY + Math.sin(spawnAngle) * spawnDistance;
+
+                // Random direction
+                const angle = Math.random() * Math.PI * 2;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+
+                this.hue = hue;
+            }
+
+            update(speed) {
+                // Update position based on speed
+                this.x += this.vx * (speed / 25);
+                this.y += this.vy * (speed / 25);
+            }
+
+            draw(ctx, hue) {
+                // Use white if hue is 0, otherwise use HSL color
+                if (hue === 0) {
+                    ctx.fillStyle = '#FFFFFF';
+                } else {
+                    ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                }
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            isOffScreen(width, height) {
+                return this.x < -50 || this.x > width + 50 || this.y < -50 || this.y > height + 50;
+            }
+        }
+
+        // Starfield system
+        class Starfield {
+            constructor() {
+                this.particles = [];
+                this.settings = {
+                    trailLength: 50,
+                    speed: 25,
+                    particleCount: 200,
+                    spawnRadius: 0,
+                    starColor: 0
+                };
+                this.centerX = canvas.width / 2;
+                this.centerY = canvas.height / 2;
+
+                this.initParticles();
+            }
+
+            initParticles() {
+                this.particles = [];
+                for (let i = 0; i < this.settings.particleCount; i++) {
+                    this.particles.push(new Particle(
+                        this.centerX,
+                        this.centerY,
+                        this.settings.spawnRadius,
+                        this.settings.speed / 10,
+                        this.settings.starColor
+                    ));
+                }
+            }
+
+            updateParticleCount(newCount) {
+                const diff = newCount - this.particles.length;
+
+                if (diff > 0) {
+                    // Add particles
+                    for (let i = 0; i < diff; i++) {
+                        this.particles.push(new Particle(
+                            this.centerX,
+                            this.centerY,
+                            this.settings.spawnRadius,
+                            this.settings.speed / 10,
+                            this.settings.starColor
+                        ));
+                    }
+                } else if (diff < 0) {
+                    // Remove particles
+                    this.particles.splice(0, Math.abs(diff));
+                }
+
+                this.settings.particleCount = newCount;
+            }
+
+            update() {
+                // Update center on resize
+                this.centerX = canvas.width / 2;
+                this.centerY = canvas.height / 2;
+
+                // Update and respawn particles
+                for (let particle of this.particles) {
+                    particle.update(this.settings.speed);
+
+                    if (particle.isOffScreen(canvas.width, canvas.height)) {
+                        particle.reset(
+                            this.centerX,
+                            this.centerY,
+                            this.settings.spawnRadius,
+                            this.settings.speed / 10,
+                            this.settings.starColor
+                        );
+                    }
+                }
+            }
+
+            draw() {
+                // Create trail effect with partial clearing
+                const trailAlpha = 1 - (this.settings.trailLength / 100);
+                ctx.fillStyle = `rgba(0, 0, 0, ${trailAlpha})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw particles
+                for (let particle of this.particles) {
+                    particle.draw(ctx, this.settings.starColor);
+                }
+
+                // Draw center spawn indicator (black circle)
+                if (this.settings.spawnRadius > 0) {
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.arc(this.centerX, this.centerY, this.settings.spawnRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Initialize starfield
+        const starfield = new Starfield();
+
+        // Animation loop
+        function animate() {
+            starfield.update();
+            starfield.draw();
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Control handlers
+        const trailSlider = document.getElementById('trail-slider');
+        const speedSlider = document.getElementById('speed-slider');
+        const countSlider = document.getElementById('count-slider');
+        const radiusSlider = document.getElementById('radius-slider');
+        const colorSlider = document.getElementById('color-slider');
+
+        const trailValue = document.getElementById('trail-value');
+        const speedValue = document.getElementById('speed-value');
+        const countValue = document.getElementById('count-value');
+        const radiusValue = document.getElementById('radius-value');
+        const colorValue = document.getElementById('color-value');
+
+        trailSlider.addEventListener('input', (e) => {
+            starfield.settings.trailLength = parseInt(e.target.value);
+            trailValue.textContent = e.target.value;
+        });
+
+        speedSlider.addEventListener('input', (e) => {
+            starfield.settings.speed = parseInt(e.target.value);
+            speedValue.textContent = e.target.value;
+        });
+
+        countSlider.addEventListener('input', (e) => {
+            const newCount = parseInt(e.target.value);
+            starfield.updateParticleCount(newCount);
+            countValue.textContent = e.target.value;
+        });
+
+        radiusSlider.addEventListener('input', (e) => {
+            starfield.settings.spawnRadius = parseInt(e.target.value);
+            radiusValue.textContent = e.target.value;
+        });
+
+        colorSlider.addEventListener('input', (e) => {
+            starfield.settings.starColor = parseInt(e.target.value);
+            colorValue.textContent = e.target.value;
+        });
+    </script>
+</body>
+</html>
